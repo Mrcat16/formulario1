@@ -49,6 +49,12 @@
             padding: 8px 16px;
             cursor: pointer;
             font-weight: bold;
+            margin-right: 10px;
+        }
+        .btn-descargar {
+            background-color: #28a745;
+            color: white;
+            border: none;
         }
     </style>
 </head>
@@ -78,12 +84,18 @@
         <form id="formulario-witcher">
             <input type="text" id="nombre" placeholder="Nombres" required><br><br>
             <input type="text" id="apellido" placeholder="Apellidos" required><br><br>
-            <input type="number" id="edad" placeholder="Edad" required><br><br>
+            
+            <label class="titulo-label" for="edad">Edad (mínimo 12, máximo 100):</label>
+            <input type="number" id="edad" min="12" max="100" placeholder="Edad (12 a 100)" required><br><br>
+            
             <label class="titulo-label" for="gusto">¿Qué tanto te gusta la saga The Witcher del 1 al 10?</label>
             <input type="number" id="gusto" min="1" max="10" placeholder="Del 1 al 10" required><br><br>
+            
             <label class="titulo-label" for="opinion">¿Por qué?</label>
             <textarea id="opinion" placeholder="Escribe el porqué de la nota" rows="4" cols="40" required></textarea><br><br>
-            <button type="button" onclick="descargarExcel()">Guardar y Descargar Excel</button>
+            
+            <button type="button" id="btn-guardar" onclick="guardarRegistro()">Guardar datos</button>
+            <button type="button" class="btn-descargar" onclick="descargarExcel()">Descargar Excel Acumulado</button>
         </form>
         <p id="mensaje-envio" style="color: yellow; font-weight: bold;"></p>
     </div>
@@ -120,46 +132,94 @@
             }
         }
 
-        function descargarExcel() {
-            let nombre = document.getElementById("nombre").value;
-            let apellido = document.getElementById("apellido").value;
-            let edad = document.getElementById("edad").value;
-            let gusto = document.getElementById("gusto").value;
-            let opinion = document.getElementById("opinion").value;
+        function guardarRegistro() {
+            let nombre = document.getElementById("nombre").value.trim();
+            let apellido = document.getElementById("apellido").value.trim();
+            let edadInput = document.getElementById("edad").value;
+            let gustoInput = document.getElementById("gusto").value;
+            let opinion = document.getElementById("opinion").value.trim();
 
-            if (!nombre || !apellido || !edad || !gusto || !opinion) {
+            // 1. Validar campos vacíos
+            if (!nombre || !apellido || !edadInput || !gustoInput || !opinion) {
                 alert("Por favor completa todos los campos antes de guardar.");
                 return;
             }
 
-            // 1. Obtener la lista existente de encuestas acumuladas en el navegador
+            let edad = Number(edadInput);
+            let gusto = Number(gustoInput);
+
+            // 2. Validaciones de Edad (mínimo 12, máximo 100)
+            if (isNaN(edad) || edad < 12 || edad > 100) {
+                alert("Error: La edad debe estar entre 12 y 100 años.");
+                return;
+            }
+
+            // 3. Validaciones de Puntaje (mínimo 1, máximo 10)
+            if (isNaN(gusto) || gusto < 1 || gusto > 10) {
+                alert("Error: El puntaje debe estar entre 1 y 10.");
+                return;
+            }
+
+            // 4. Obtener el historial previo acumulado
             let historialEncuestas = JSON.parse(localStorage.getItem("encuestas_witcher")) || [];
 
-            // 2. Crear la nueva respuesta
+            // 5. Crear la nueva respuesta
             let nuevaRespuesta = {
                 "Nº": historialEncuestas.length + 1,
                 Nombre: nombre,
                 Apellido: apellido,
-                Edad: Number(edad),
-                "Puntuación (1-10)": Number(gusto),
+                Edad: edad,
+                "Puntuación (1-10)": gusto,
                 Opinión: opinion,
                 Fecha: new Date().toLocaleString()
             };
 
-            // 3. Agregar la nueva respuesta al historial acumulado
+            // 6. Agregar al historial y guardar en localStorage
             historialEncuestas.push(nuevaRespuesta);
-
-            // 4. Guardar la lista actualizada en localStorage
             localStorage.setItem("encuestas_witcher", JSON.stringify(historialEncuestas));
 
-            // 5. Generar el archivo Excel con TODAS las respuestas acumuladas
-            let hoja = XLSX.utils.json_to_sheet(historialEncuestas);
-            let libro = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(libro, hoja, "Respuestas Acumuladas");
-            XLSX.writeFile(libro, "encuesta_witcher.xlsx");
-
-            document.getElementById("mensaje-envio").textContent = "¡Respuesta registrada con éxito! Descargando lista acumulada (" + historialEncuestas.length + " registro(s)).";
+            document.getElementById("mensaje-envio").textContent = "¡Datos guardados correctamente! Registro Nº " + historialEncuestas.length + " acumulado.";
             document.getElementById("formulario-witcher").reset();
+        }
+
+        function descargarExcel() {
+            let historialEncuestas = JSON.parse(localStorage.getItem("encuestas_witcher")) || [];
+
+            if (historialEncuestas.length === 0) {
+                alert("No hay registros guardados para exportar. Ingresa una respuesta y presiona 'Guardar datos'.");
+                return;
+            }
+
+            // Crear la hoja de trabajo a partir de las encuestas guardadas
+            let hoja = XLSX.utils.json_to_sheet(historialEncuestas);
+
+            // Proteger la hoja para sugerir modo de solo lectura
+            hoja['!protect'] = {
+                selectLockedCells: true,
+                selectUnlockedCells: true,
+                formatCells: false,
+                formatColumns: false,
+                formatRows: false,
+                insertColumns: false,
+                insertRows: false,
+                insertHyperlinks: false,
+                deleteColumns: false,
+                deleteRows: false,
+                sort: false,
+                autoFilter: false,
+                pivotTables: false
+            };
+
+            let libro = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(libro, hoja, "Respuestas");
+
+            // Configurar propiedades de protección en la estructura del libro
+            if (!libro.Workbook) libro.Workbook = {};
+            if (!libro.Workbook.Protect) libro.Workbook.Protect = {};
+            libro.Workbook.Protect.LockStructure = true;
+
+            XLSX.writeFile(libro, "encuesta_witcher.xlsx");
+            document.getElementById("mensaje-envio").textContent = "¡Excel generado en modo lectura con " + historialEncuestas.length + " registro(s)!";
         }
     </script>
 </body>
