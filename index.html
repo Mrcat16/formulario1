@@ -60,6 +60,7 @@
         <button onclick="validarAcceso()">Ingresar</button>
         <p id="mensaje-error" style="color: red;"></p>
     </div>
+    
     <div id="contenido_de_la_pagina" style="display: none;">
         <h1 id="titulo"></h1>
         <h2 id="sustitulo"></h2>
@@ -86,11 +87,14 @@
         </form>
         <p id="mensaje-envio" style="color: yellow; font-weight: bold;"></p>
     </div>
+
     <script>
         let intentos = 0;
+
         function validarAcceso() {
             let usuarioEscrito = document.getElementById("usuario").value;
             let claveEscrita = document.getElementById("clave").value;
+
             if (usuarioEscrito === "Geralt" && claveEscrita === "De Rivia") {
                 document.getElementById("login").style.display = "none";
                 document.getElementById("contenido_de_la_pagina").style.display = "block";
@@ -98,6 +102,7 @@
                 document.getElementById("sustitulo").textContent = "Geralt de Rivia es un personaje de la saga de videojuegos The Witcher";
                 document.getElementById("imagen").src = "Geralt.jpg";
                 document.getElementById("sustitulos2").textContent = "Es famoso en su mundo por ser un gran cazador de monstruos y es conocido por 'Supuestamente matar al rey Foltest'";
+                
                 let visitas = Number(localStorage.getItem("visitasContador")) || 0;
                 visitas++;
                 localStorage.setItem("visitasContador", visitas);
@@ -114,29 +119,46 @@
                 }
             }
         }
+
         function descargarExcel() {
             let nombre = document.getElementById("nombre").value;
             let apellido = document.getElementById("apellido").value;
             let edad = document.getElementById("edad").value;
             let gusto = document.getElementById("gusto").value;
             let opinion = document.getElementById("opinion").value;
+
             if (!nombre || !apellido || !edad || !gusto || !opinion) {
-                alert("Por favor completa todos los campos antes de descargar.");
+                alert("Por favor completa todos los campos antes de guardar.");
                 return;
             }
-            let datos = [{
+
+            // 1. Obtener la lista existente de encuestas acumuladas en el navegador
+            let historialEncuestas = JSON.parse(localStorage.getItem("encuestas_witcher")) || [];
+
+            // 2. Crear la nueva respuesta
+            let nuevaRespuesta = {
+                "Nº": historialEncuestas.length + 1,
                 Nombre: nombre,
                 Apellido: apellido,
                 Edad: Number(edad),
                 "Puntuación (1-10)": Number(gusto),
                 Opinión: opinion,
                 Fecha: new Date().toLocaleString()
-            }];
-            let hoja = XLSX.utils.json_to_sheet(datos);
+            };
+
+            // 3. Agregar la nueva respuesta al historial acumulado
+            historialEncuestas.push(nuevaRespuesta);
+
+            // 4. Guardar la lista actualizada en localStorage
+            localStorage.setItem("encuestas_witcher", JSON.stringify(historialEncuestas));
+
+            // 5. Generar el archivo Excel con TODAS las respuestas acumuladas
+            let hoja = XLSX.utils.json_to_sheet(historialEncuestas);
             let libro = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(libro, hoja, "Respuestas");
+            XLSX.utils.book_append_sheet(libro, hoja, "Respuestas Acumuladas");
             XLSX.writeFile(libro, "encuesta_witcher.xlsx");
-            document.getElementById("mensaje-envio").textContent = "¡Archivo Excel generado y descargado con éxito!";
+
+            document.getElementById("mensaje-envio").textContent = "¡Respuesta registrada con éxito! Descargando lista acumulada (" + historialEncuestas.length + " registro(s)).";
             document.getElementById("formulario-witcher").reset();
         }
     </script>
