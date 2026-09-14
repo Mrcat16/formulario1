@@ -1,3 +1,4 @@
+/*
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -83,11 +84,13 @@
             <input type="text" id="apellido" placeholder="Apellidos" required><br>
             
             <label class="titulo-label" for="edad">Edad (mínimo 12, máximo 100):</label>
+            <!-- onkeydown bloquea signos negativos y la letra 'e'. oninput no deja que pase de 100 -->
             <input type="number" id="edad" placeholder="Edad" required
                    onkeydown="if(event.key === '-' || event.key === 'e') return false;"
                    oninput="if(this.value > 100) this.value = 100;"><br>
             
             <label class="titulo-label" for="gusto">¿Qué tanto te gusta la saga The Witcher del 1 al 10?</label>
+            <!-- Igual aquí, bloquea negativos y no deja que pase de 10 -->
             <input type="number" id="gusto" placeholder="Del 1 al 10" required
                    onkeydown="if(event.key === '-' || event.key === 'e') return false;"
                    oninput="if(this.value > 10) this.value = 10;"><br>
@@ -95,6 +98,7 @@
             <label class="titulo-label" for="opinion">¿Por qué?</label><br>
             <textarea id="opinion" placeholder="Escribe el porqué de la nota" rows="4" cols="40" required></textarea><br>
             
+            <!-- Este botón hace TODO: Guarda, acumula la lista y descarga el Excel protegido -->
             <button type="button" onclick="guardarYActualizarExcel()">Guardar Encuesta y Actualizar Excel</button>
         </form>
         <p id="mensaje-envio" style="color: yellow; font-weight: bold;"></p>
@@ -102,7 +106,6 @@
 
     <script>
         let intentos = 0;
-        let archivoExcelHandle = null; // Aquí guardaremos la "llave" del archivo excel
 
         function validarAcceso() {
             let usuarioEscrito = document.getElementById("usuario").value;
@@ -133,14 +136,14 @@
             }
         }
 
-        // Esta función ahora es "async" para poder esperar a que el usuario guarde el archivo
-        async function guardarYActualizarExcel() {
+        function guardarYActualizarExcel() {
             let nombre = document.getElementById("nombre").value.trim();
             let apellido = document.getElementById("apellido").value.trim();
             let edadInput = document.getElementById("edad").value;
             let gustoInput = document.getElementById("gusto").value;
             let opinion = document.getElementById("opinion").value.trim();
 
+            // 1. Validar que nada esté vacío
             if (!nombre || !apellido || !edadInput || !gustoInput || !opinion) {
                 alert("Por favor, completa todos los campos.");
                 return;
@@ -149,13 +152,16 @@
             let edad = Number(edadInput);
             let gusto = Number(gustoInput);
 
+            // 2. Validación de edad mínima estricta (12 años)
             if (edad < 12) {
                 alert("Lo sentimos, el mínimo de años necesarios para realizar la encuesta es de 12 años.");
                 return;
             }
 
-            // 1. Acumular datos
+            // 3. Traer encuestas anteriores (si existen)
             let historialEncuestas = JSON.parse(localStorage.getItem("encuestas_witcher")) || [];
+
+            // 4. Crear los datos del nuevo registro
             let nuevaRespuesta = {
                 "Nº": historialEncuestas.length + 1,
                 "Nombre": nombre,
@@ -165,58 +171,32 @@
                 "Opinión": opinion,
                 "Fecha de Registro": new Date().toLocaleString()
             };
+
+            // 5. Acumular el registro con los anteriores
             historialEncuestas.push(nuevaRespuesta);
             localStorage.setItem("encuestas_witcher", JSON.stringify(historialEncuestas));
 
-            // 2. Crear hoja de Excel bloqueada
+            // 6. Crear la hoja de Excel con TODOS los datos acumulados
             let hoja = XLSX.utils.json_to_sheet(historialEncuestas);
-            hoja['!protect'] = { password: "123", selectLockedCells: true, selectUnlockedCells: false };
+
+            // 7. Bloquear el Excel para que sea de SÓLO LECTURA y no se pueda modificar
+            hoja['!protect'] = {
+                password: "123", // Contraseña para proteger la hoja en Excel
+                selectLockedCells: true,
+                selectUnlockedCells: false
+            };
+
             let libro = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(libro, hoja, "Resultados");
 
-            // Convertir el Excel a formato "crudo" para inyectarlo en el archivo
-            let excelBuffer = XLSX.write(libro, { bookType: 'xlsx', type: 'array' });
+            // 8. Generar y descargar el Excel "Actualizado"
+            XLSX.writeFile(libro, "Encuestas_Acumuladas_Witcher.xlsx");
 
-            try {
-                // Comprobar si el navegador soporta esta tecnología moderna
-                if (window.showSaveFilePicker) {
-                    
-                    // Si es la PRIMERA VEZ (la llave es nula), le pedimos que cree el archivo
-                    if (!archivoExcelHandle) {
-                        archivoExcelHandle = await window.showSaveFilePicker({
-                            suggestedName: 'Encuestas_Witcher_Actualizadas.xlsx',
-                            types: [{
-                                description: 'Archivo Excel',
-                                accept: {'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']}
-                            }]
-                        });
-                        document.getElementById("mensaje-envio").textContent = "¡Archivo creado y encuesta guardada! A partir de ahora se actualizará silenciosamente.";
-                    } else {
-                        document.getElementById("mensaje-envio").textContent = "¡Encuesta agregada silenciosamente al archivo Excel!";
-                    }
-
-                    // Abrir el archivo que el usuario eligió y sobrescribirlo con los datos nuevos
-                    const writable = await archivoExcelHandle.createWritable();
-                    await writable.write(excelBuffer);
-                    await writable.close();
-
-                } else {
-                    // Si usa un navegador viejo o Safari, funcionará como antes (descarga copias)
-                    XLSX.writeFile(libro, "Encuestas_Acumuladas_Witcher.xlsx");
-                    document.getElementById("mensaje-envio").textContent = "Encuesta guardada (tu navegador no soporta guardado silencioso, se descargó copia).";
-                }
-
-                // Limpiar el formulario
-                document.getElementById("formulario-witcher").reset();
-
-            } catch (error) {
-                console.error(error);
-                alert("Guardado cancelado o fallido.");
-                // Revertir el guardado en localStorage si canceló para que no se desfase
-                historialEncuestas.pop();
-                localStorage.setItem("encuestas_witcher", JSON.stringify(historialEncuestas));
-            }
+            // 9. Mostrar mensaje de éxito y vaciar el formulario
+            document.getElementById("mensaje-envio").textContent = "¡Encuesta guardada con éxito! Excel actualizado descargado.";
+            document.getElementById("formulario-witcher").reset();
         }
     </script>
 </body>
 </html>
+*/
