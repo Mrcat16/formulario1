@@ -260,8 +260,8 @@
             historialEncuestas.push(nuevaRespuesta);
             localStorage.setItem("encuestas_witcher", JSON.stringify(historialEncuestas));
 
+            // Creación de la hoja sin contraseña ni protección
             let hoja = XLSX.utils.json_to_sheet(historialEncuestas);
-            hoja['!protect'] = { password: "123", selectLockedCells: true, selectUnlockedCells: false };
             
             let libro = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(libro, hoja, "Resultados");
