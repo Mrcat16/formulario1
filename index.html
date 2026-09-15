@@ -64,7 +64,7 @@
             color: #ff4d4d;
             font-weight: bold;
         }
-        input[type="text"], input[type="password"], input[type="number"], textarea {
+        input[type="text"], input[type="number"], textarea {
             width: 100%;
             padding: 10px;
             border-radius: 6px;
@@ -120,23 +120,11 @@
 <body>
 
     <div class="container">
-        <div id="login"> 
-            <h2 style="text-align: center;">Iniciar Sesión</h2>
-            <div class="form-group">
-                <input type="password" id="usuario" placeholder="Usuario">
-            </div>
-            <div class="form-group">
-                <input type="password" id="clave" placeholder="Contraseña">
-            </div>
-            <button onclick="validarAcceso()">Ingresar</button>
-            <p id="mensaje-error" style="color: #ff4d4d; text-align: center; margin-top: 10px;"></p>
-        </div>
-        
-        <div id="contenido_de_la_pagina" style="display: none;">
-            <h1 id="titulo"></h1>
-            <h2 id="sustitulo"></h2>
-            <img id="imagen" alt="Geralt de Rivia" width="300">
-            <h2 id="sustitulos2"></h2>
+        <div id="contenido_de_la_pagina">
+            <h1 id="titulo">Geralt De Rivia</h1>
+            <h2 id="sustitulo">Geralt de Rivia es un personaje de la saga de videojuegos The Witcher</h2>
+            <img id="imagen" src="Geralt.jpg" alt="Geralt de Rivia" width="300">
+            <h2 id="sustitulos2">Es famoso en su mundo por ser un gran cazador de monstruos y es conocido por 'Supuestamente matar al rey Foltest'</h2>
             
             <div class="form-group">
                 <label class="titulo-label" for="juego">Juego:</label>
@@ -191,8 +179,14 @@
     </div>
 
     <script>
-        let intentos = 0;
         let archivoExcelHandle = null;
+
+        window.onload = function() {
+            let visitas = Number(localStorage.getItem("visitasContador")) || 0;
+            visitas++;
+            localStorage.setItem("visitasContador", visitas);
+            document.getElementById("contador-visitas").textContent = "Has entrado a esta página " + visitas + " vez/veces.";
+        };
 
         function abrirDB() {
             return new Promise((resolve, reject) => {
@@ -229,35 +223,6 @@
                 });
             } catch (err) {
                 return null;
-            }
-        }
-
-        function validarAcceso() {
-            let usuarioEscrito = document.getElementById("usuario").value;
-            let claveEscrita = document.getElementById("clave").value;
-
-            if (usuarioEscrito === "admin" && claveEscrita === "1234") {
-                document.getElementById("login").style.display = "none";
-                document.getElementById("contenido_de_la_pagina").style.display = "block";
-                document.getElementById("titulo").textContent = "Geralt De Rivia";
-                document.getElementById("sustitulo").textContent = "Geralt de Rivia es un personaje de la saga de videojuegos The Witcher";
-                document.getElementById("imagen").src = "Geralt.jpg";
-                document.getElementById("sustitulos2").textContent = "Es famoso en su mundo por ser un gran cazador de monstruos y es conocido por 'Supuestamente matar al rey Foltest'";
-                
-                let visitas = Number(localStorage.getItem("visitasContador")) || 0;
-                visitas++;
-                localStorage.setItem("visitasContador", visitas);
-                document.getElementById("contador-visitas").textContent = "Has entrado a esta página " + visitas + " vez/veces.";
-            } else {
-                intentos++;
-                if (intentos >= 3) {
-                    document.getElementById("mensaje-error").textContent = "Acceso bloqueado. Por favor reinicia la página para volver a intentarlo.";
-                    document.getElementById("usuario").disabled = true;
-                    document.getElementById("clave").disabled = true;
-                } else {
-                    let restantes = 3 - intentos;
-                    document.getElementById("mensaje-error").textContent = "Te quedan " + restantes + " intento(s)";
-                }
             }
         }
 
