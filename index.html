@@ -28,6 +28,10 @@
             max-width: 800px;
             width: 100%;
         }
+        /* Contenedor específico para el Login */
+        #login-container {
+            max-width: 400px;
+        }
         #titulo { 
             color: #ff3333; 
             text-align: center; 
@@ -64,7 +68,7 @@
             color: #ff4d4d;
             font-weight: bold;
         }
-        input[type="text"], input[type="number"], textarea {
+        input[type="text"], input[type="password"], input[type="number"], textarea {
             width: 100%;
             padding: 10px;
             border-radius: 6px;
@@ -115,11 +119,37 @@
             text-align: center;
             margin-top: 15px;
         }
+        .error-msg {
+            color: #ff4d4d;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
 
-    <div class="container">
+    <!-- PANTALLA DE INICIO DE SESIÓN -->
+    <div id="login-container" class="container">
+        <h2 style="text-align: center; color: #00ffd5;">Iniciar Sesión</h2>
+        <form id="formulario-login" onsubmit="event.preventDefault(); iniciarSesion();">
+            <div class="form-group">
+                <label for="usuario_login">Usuario:</label>
+                <input type="text" id="usuario_login" placeholder="Ingresa tu usuario" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password_login">Contraseña:</label>
+                <input type="password" id="password_login" placeholder="Ingresa tu contraseña" required>
+            </div>
+            
+            <button type="submit">Ingresar</button>
+            <p id="mensaje-login" class="error-msg"></p>
+        </form>
+    </div>
+
+    <!-- CONTENIDO PRINCIPAL DE LA PÁGINA (OCULTO INICIALMENTE) -->
+    <div id="contenido-principal" class="container" style="display: none;">
         <div id="contenido_de_la_pagina">
             <h1 id="titulo">Geralt De Rivia</h1>
             <h2 id="sustitulo">Geralt de Rivia es un personaje de la saga de videojuegos The Witcher</h2>
@@ -181,12 +211,34 @@
     <script>
         let archivoExcelHandle = null;
 
-        window.onload = function() {
+        // Función para validar e iniciar sesión
+        function iniciarSesion() {
+            let user = document.getElementById("usuario_login").value.trim();
+            let pass = document.getElementById("password_login").value.trim();
+            let msg = document.getElementById("mensaje-login");
+
+            // Credenciales de ejemplo (puedes cambiarlas según tus necesidades)
+            let usuarioValido = "admin";
+            let passValida = "1234";
+
+            if (user === usuarioValido && pass === passValida) {
+                document.getElementById("login-container").style.style = "display: none;";
+                document.getElementById("login-container").style.display = "none";
+                document.getElementById("contenido-principal").style.display = "block";
+                
+                // Inicializar contador de visitas al entrar
+                registrarVisita();
+            } else {
+                msg.textContent = "Usuario o contraseña incorrectos.";
+            }
+        }
+
+        function registrarVisita() {
             let visitas = Number(localStorage.getItem("visitasContador")) || 0;
             visitas++;
             localStorage.setItem("visitasContador", visitas);
             document.getElementById("contador-visitas").textContent = "Has entrado a esta página " + visitas + " vez/veces.";
-        };
+        }
 
         function abrirDB() {
             return new Promise((resolve, reject) => {
@@ -260,9 +312,8 @@
             historialEncuestas.push(nuevaRespuesta);
             localStorage.setItem("encuestas_witcher", JSON.stringify(historialEncuestas));
 
-            // Creación de la hoja sin contraseña ni protección
+            // Creación de la hoja
             let hoja = XLSX.utils.json_to_sheet(historialEncuestas);
-            
             let libro = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(libro, hoja, "Resultados");
 
